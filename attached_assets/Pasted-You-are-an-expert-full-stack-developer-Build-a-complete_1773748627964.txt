@@ -1,0 +1,285 @@
+You are an expert full-stack developer.
+
+Build a complete working web application step-by-step. Do NOT skip steps. Do NOT assume missing details.
+
+---
+
+PROJECT:
+Disease-Aware Ingredient Substitution Web App
+---------------------------------------------
+
+GOAL:
+Users input a recipe → system:
+
+1. Detects ingredients
+2. Checks for disease-based restrictions
+3. Flags unsafe ingredients
+4. Suggests safe substitutes
+5. Recalculates nutrition
+6. Displays results visually (with icons/images)
+
+---
+
+TECH STACK (STRICT):
+
+Frontend:
+
+* React (use Vite or Next.js)
+* Tailwind CSS
+
+Backend:
+
+* Python FastAPI
+
+Database:
+
+* SQLite (for simplicity in Replit)
+
+---
+
+STEP 1: PROJECT SETUP
+
+* Create frontend and backend folders
+* Setup FastAPI server
+* Setup React app
+* Connect frontend to backend (basic API test)
+
+---
+
+STEP 2: DATABASE DESIGN (SQLite)
+
+Create tables:
+
+1. ingredients
+
+* id
+* name
+* category
+
+2. nutrition
+
+* ingredient_id
+* calories
+* protein
+* carbs
+* fat
+* sugar
+* sodium
+
+3. substitutions
+
+* id
+* original_ingredient
+* substitute_ingredient
+
+4. disease_rules
+
+* id
+* disease_name
+* restricted_ingredient
+
+5. feedback
+
+* id
+* ingredient
+* substitute
+* rating
+
+Insert sample data for all tables.
+
+---
+
+STEP 3: BACKEND APIs (FastAPI)
+
+Create endpoints:
+
+1. POST /analyze-recipe
+   Input:
+
+* recipe (text or JSON)
+* disease (string)
+
+Output:
+
+* parsed ingredients
+* unsafe ingredients
+* suggested substitutes
+* nutrition comparison
+
+2. GET /ingredients
+3. GET /substitutes/{ingredient}
+4. GET /nutrition/{ingredient}
+
+---
+
+STEP 4: RECIPE PARSING
+
+* Accept simple input like:
+  "2 cups sugar, 1 cup milk, 1 tbsp salt"
+* Extract:
+
+  * ingredient name
+* Keep it simple (no complex NLP)
+
+---
+
+STEP 5: RULE ENGINE (IMPORTANT)
+
+Logic:
+
+* If ingredient is restricted for selected disease:
+  → mark as unsafe
+
+Example:
+
+* Diabetes → sugar is unsafe
+
+Return list of unsafe ingredients.
+
+---
+
+STEP 6: SUBSTITUTE GENERATION
+
+For each unsafe ingredient:
+
+* Fetch substitutes from DB
+
+If multiple:
+
+* Rank using simple scoring:
+  score = lower sugar + lower calories
+
+Return top substitutes.
+
+---
+
+STEP 7: NUTRITION ENGINE
+
+* Sum nutrition of all ingredients
+* Recalculate after substitution
+* Return:
+
+  * original nutrition
+  * new nutrition
+
+---
+
+STEP 8: FRONTEND UI
+
+Create pages:
+
+1. Home Page
+
+* Recipe input box
+* Disease selector dropdown
+* Submit button
+
+2. Results Page
+
+Display:
+
+For each ingredient:
+
+CARD FORMAT:
+
+[ Ingredient Name + Icon ]
+↓
+[ Substitute Name + Icon ]
+
+Also show:
+
+* “Unsafe” tag (red)
+* “Recommended” tag (green)
+
+---
+
+ICONS / IMAGES (MANDATORY)
+
+* Use local images stored in /public/images/
+* Map ingredient name → image file
+  Example:
+* sugar → sugar.png
+* milk → milk.png
+
+If image missing:
+
+* show placeholder icon
+
+---
+
+UI DESIGN:
+
+* Use Tailwind
+* Cards with rounded corners
+* Grid layout
+* Colors:
+
+  * Red → unsafe
+  * Green → substitute
+
+---
+
+STEP 9: NUTRITION DISPLAY
+
+Show:
+
+* Calories
+* Protein
+* Carbs
+* Fat
+
+Display:
+
+* Before vs After (side-by-side)
+
+---
+
+STEP 10: FEEDBACK SYSTEM
+
+* Add button:
+  “Was this helpful?”
+* Store feedback in DB
+
+---
+
+STEP 11: ERROR HANDLING
+
+Handle:
+
+* Unknown ingredients
+* No substitute found
+
+Fallback:
+
+* Show message: “No safe substitute available”
+
+---
+
+STEP 12: FINAL OUTPUT
+
+Ensure:
+
+* App runs fully in Replit
+* Backend + frontend integrated
+* Sample data works
+* UI shows icons correctly
+
+---
+
+IMPORTANT RULES:
+
+* Keep code simple and modular
+* Comment important logic
+* Do NOT overcomplicate NLP or ML
+* Focus on working MVP
+
+---
+
+Start building now:
+
+1. Setup project
+2. Then backend
+3. Then frontend
+4. Then integration
+
+Show code step-by-step.

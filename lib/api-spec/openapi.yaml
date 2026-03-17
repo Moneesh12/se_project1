@@ -1,15 +1,20 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Disease-Aware Ingredient Substitution API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: recipe
+    description: Recipe analysis operations
+  - name: ingredients
+    description: Ingredient data operations
+  - name: feedback
+    description: Feedback operations
 paths:
   /healthz:
     get:
@@ -24,6 +29,139 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /analyze-recipe:
+    post:
+      operationId: analyzeRecipe
+      tags: [recipe]
+      summary: Analyze a recipe for disease restrictions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeRecipeRequest"
+      responses:
+        "200":
+          description: Analysis result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyzeRecipeResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /ingredients:
+    get:
+      operationId: listIngredients
+      tags: [ingredients]
+      summary: List all ingredients
+      responses:
+        "200":
+          description: List of ingredients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ingredient"
+
+  /ingredients/{name}/substitutes:
+    get:
+      operationId: getSubstitutes
+      tags: [ingredients]
+      summary: Get substitutes for an ingredient
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of substitutes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SubstituteWithNutrition"
+        "404":
+          description: Ingredient not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /ingredients/{name}/nutrition:
+    get:
+      operationId: getIngredientNutrition
+      tags: [ingredients]
+      summary: Get nutrition for an ingredient
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Nutrition data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NutritionData"
+        "404":
+          description: Ingredient not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /diseases:
+    get:
+      operationId: listDiseases
+      tags: [ingredients]
+      summary: List supported diseases
+      responses:
+        "200":
+          description: List of diseases
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /feedback:
+    post:
+      operationId: submitFeedback
+      tags: [feedback]
+      summary: Submit feedback for a substitution
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeedbackRequest"
+      responses:
+        "201":
+          description: Feedback submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbackResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +172,132 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    AnalyzeRecipeRequest:
+      type: object
+      properties:
+        recipe:
+          type: string
+          description: Recipe text, e.g. "2 cups sugar, 1 cup milk"
+        disease:
+          type: string
+          description: Disease name for restriction checking
+      required:
+        - recipe
+        - disease
+
+    IngredientResult:
+      type: object
+      properties:
+        name:
+          type: string
+        isUnsafe:
+          type: boolean
+        substitutes:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubstituteWithNutrition"
+        originalNutrition:
+          $ref: "#/components/schemas/NutritionData"
+      required:
+        - name
+        - isUnsafe
+        - substitutes
+
+    SubstituteWithNutrition:
+      type: object
+      properties:
+        name:
+          type: string
+        score:
+          type: number
+        nutrition:
+          $ref: "#/components/schemas/NutritionData"
+      required:
+        - name
+        - score
+
+    NutritionData:
+      type: object
+      properties:
+        calories:
+          type: ["number", "null"]
+        protein:
+          type: ["number", "null"]
+        carbs:
+          type: ["number", "null"]
+        fat:
+          type: ["number", "null"]
+        sugar:
+          type: ["number", "null"]
+        sodium:
+          type: ["number", "null"]
+
+    AnalyzeRecipeResponse:
+      type: object
+      properties:
+        disease:
+          type: string
+        parsedIngredients:
+          type: array
+          items:
+            $ref: "#/components/schemas/IngredientResult"
+        originalNutritionTotal:
+          $ref: "#/components/schemas/NutritionData"
+        substitutedNutritionTotal:
+          $ref: "#/components/schemas/NutritionData"
+        unsafeCount:
+          type: integer
+      required:
+        - disease
+        - parsedIngredients
+        - originalNutritionTotal
+        - substitutedNutritionTotal
+        - unsafeCount
+
+    Ingredient:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        category:
+          type: string
+      required:
+        - id
+        - name
+        - category
+
+    FeedbackRequest:
+      type: object
+      properties:
+        ingredient:
+          type: string
+        substitute:
+          type: string
+        rating:
+          type: integer
+          description: Rating from 1 to 5
+      required:
+        - ingredient
+        - substitute
+        - rating
+
+    FeedbackResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        message:
+          type: string
+      required:
+        - id
+        - message

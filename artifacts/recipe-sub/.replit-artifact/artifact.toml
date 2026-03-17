@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Disease-Aware Recipe Substitution"
+version = "1.0.0"
+id = "artifacts/recipe-sub"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+localPort = 18619
+name = "web"
+paths = ["/"]
+
+[services.development]
+run = "pnpm --filter @workspace/recipe-sub run dev"
+
+[services.env]
+PORT = "18619"
+BASE_PATH = "/"
+
+[services.production]
+build = ["pnpm", "--filter", "@workspace/recipe-sub", "run", "build"]
+publicDir = "artifacts/recipe-sub/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"

@@ -1,0 +1,18 @@
+packages:
+  "framer-motion": "For staggered animations, layout transitions, and premium micro-interactions"
+  "clsx": "Classname utilities"
+  "tailwind-merge": "Classname utilities"
+  "@radix-ui/react-slot": "For reusable UI components"
+  "lucide-react": "For beautiful consistent iconography"
+
+images:
+  - path: "artifacts/recipe-sub/public/images/hero-bg.png"
+    description: "Fresh healthy ingredients like green vegetables, bright fruits, and whole grains scattered aesthetically on a clean white marble countertop, bright natural lighting, soft focus background, highly aesthetic, modern wellness vibe"
+    aspect_ratio: "16:9"
+  - path: "artifacts/recipe-sub/public/images/logo.png"
+    description: "Minimalist modern logo mark combining a medical cross with a leafy green plant sprout, vibrant emerald green color on transparent background"
+    aspect_ratio: "1:1"
+
+notes:
+  - Uses @workspace/api-client-react for Tanstack Query hooks
+  - Relies on HSL CSS variables for theming
