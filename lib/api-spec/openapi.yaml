@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
-  title: Api
-  version: 0.1.0
-  description: Disease-Aware Ingredient Substitution API
+  title: VitalSub API
+  version: 1.0.0
+  description: General-purpose intelligent ingredient substitution API
 servers:
   - url: /api
     description: Base API path
@@ -10,11 +10,12 @@ tags:
   - name: health
     description: Health operations
   - name: recipe
-    description: Recipe analysis operations
+    description: Recipe analysis and substitution
   - name: ingredients
     description: Ingredient data operations
   - name: feedback
-    description: Feedback operations
+    description: Substitution feedback
+
 paths:
   /healthz:
     get:
@@ -34,7 +35,12 @@ paths:
     post:
       operationId: analyzeRecipe
       tags: [recipe]
-      summary: Analyze a recipe for disease restrictions
+      summary: Analyze a recipe and suggest substitutes
+      description: |
+        Parses the ingredient list, normalizes variants (e.g. "brown sugar" → "sugar"),
+        then runs a 3-layer substitution pipeline: direct DB mappings, functional/category
+        matches, and cosine nutrition similarity. Returns ranked substitutes scored by
+        nutritional similarity, functional role, health improvement, and user feedback.
       requestBody:
         required: true
         content:
@@ -43,7 +49,7 @@ paths:
               $ref: "#/components/schemas/AnalyzeRecipeRequest"
       responses:
         "200":
-          description: Analysis result
+          description: Substitution analysis result
           content:
             application/json:
               schema:
@@ -74,7 +80,7 @@ paths:
     get:
       operationId: getSubstitutes
       tags: [ingredients]
-      summary: Get substitutes for an ingredient
+      summary: Get ranked substitutes for a named ingredient
       parameters:
         - name: name
           in: path
@@ -83,25 +89,19 @@ paths:
             type: string
       responses:
         "200":
-          description: List of substitutes
+          description: Ranked list of substitutes
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: "#/components/schemas/SubstituteWithNutrition"
-        "404":
-          description: Ingredient not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
 
   /ingredients/{name}/nutrition:
     get:
       operationId: getIngredientNutrition
       tags: [ingredients]
-      summary: Get nutrition for an ingredient
+      summary: Get nutrition data for an ingredient
       parameters:
         - name: name
           in: path
@@ -110,7 +110,7 @@ paths:
             type: string
       responses:
         "200":
-          description: Nutrition data
+          description: Nutrition data per 100g
           content:
             application/json:
               schema:
@@ -122,26 +122,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
-  /diseases:
-    get:
-      operationId: listDiseases
-      tags: [ingredients]
-      summary: List supported diseases
-      responses:
-        "200":
-          description: List of diseases
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: string
-
   /feedback:
     post:
       operationId: submitFeedback
       tags: [feedback]
-      summary: Submit feedback for a substitution
+      summary: Submit user feedback for a substitution
       requestBody:
         required: true
         content:
@@ -150,7 +135,7 @@ paths:
               $ref: "#/components/schemas/FeedbackRequest"
       responses:
         "201":
-          description: Feedback submitted
+          description: Feedback recorded
           content:
             application/json:
               schema:
@@ -169,47 +154,32 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
     ErrorResponse:
       type: object
       properties:
         error:
           type: string
-      required:
-        - error
+      required: [error]
 
     AnalyzeRecipeRequest:
       type: object
       properties:
         recipe:
           type: string
-          description: Recipe text, e.g. "2 cups sugar, 1 cup milk"
-        disease:
-          type: string
-          description: Disease name for restriction checking
-      required:
-        - recipe
-        - disease
+          description: Comma-separated ingredient list, e.g. "2 cups brown sugar, 1 cup milk"
+      required: [recipe]
 
-    IngredientResult:
+    NutritionData:
       type: object
       properties:
-        name:
-          type: string
-        isUnsafe:
-          type: boolean
-        substitutes:
-          type: array
-          items:
-            $ref: "#/components/schemas/SubstituteWithNutrition"
-        originalNutrition:
-          $ref: "#/components/schemas/NutritionData"
-      required:
-        - name
-        - isUnsafe
-        - substitutes
+        calories: { type: ["number", "null"] }
+        protein:  { type: ["number", "null"] }
+        carbs:    { type: ["number", "null"] }
+        fat:      { type: ["number", "null"] }
+        sugar:    { type: ["number", "null"] }
+        sodium:   { type: ["number", "null"] }
 
     SubstituteWithNutrition:
       type: object
@@ -218,33 +188,35 @@ components:
           type: string
         score:
           type: number
+          description: Composite score 0–100
+        reason:
+          type: string
+          description: Why this substitute was recommended
         nutrition:
           $ref: "#/components/schemas/NutritionData"
-      required:
-        - name
-        - score
+      required: [name, score]
 
-    NutritionData:
+    IngredientResult:
       type: object
       properties:
-        calories:
-          type: ["number", "null"]
-        protein:
-          type: ["number", "null"]
-        carbs:
-          type: ["number", "null"]
-        fat:
-          type: ["number", "null"]
-        sugar:
-          type: ["number", "null"]
-        sodium:
-          type: ["number", "null"]
+        name:
+          type: string
+        normalizedName:
+          type: string
+          description: Canonical ingredient name if input was a recognized variant
+        hasSubstitutes:
+          type: boolean
+        substitutes:
+          type: array
+          items:
+            $ref: "#/components/schemas/SubstituteWithNutrition"
+        originalNutrition:
+          $ref: "#/components/schemas/NutritionData"
+      required: [name, hasSubstitutes, substitutes]
 
     AnalyzeRecipeResponse:
       type: object
       properties:
-        disease:
-          type: string
         parsedIngredients:
           type: array
           items:
@@ -253,51 +225,38 @@ components:
           $ref: "#/components/schemas/NutritionData"
         substitutedNutritionTotal:
           $ref: "#/components/schemas/NutritionData"
-        unsafeCount:
+        substituteCount:
           type: integer
+          description: Number of ingredients that have at least one substitute recommendation
       required:
-        - disease
         - parsedIngredients
         - originalNutritionTotal
         - substitutedNutritionTotal
-        - unsafeCount
+        - substituteCount
 
     Ingredient:
       type: object
       properties:
-        id:
-          type: integer
-        name:
-          type: string
-        category:
-          type: string
-      required:
-        - id
-        - name
-        - category
+        id:       { type: integer }
+        name:     { type: string }
+        category: { type: string }
+      required: [id, name, category]
 
     FeedbackRequest:
       type: object
       properties:
-        ingredient:
-          type: string
-        substitute:
-          type: string
+        ingredient: { type: string }
+        substitute:  { type: string }
         rating:
           type: integer
-          description: Rating from 1 to 5
-      required:
-        - ingredient
-        - substitute
-        - rating
+          minimum: 1
+          maximum: 5
+          description: Rating from 1 (poor) to 5 (excellent)
+      required: [ingredient, substitute, rating]
 
     FeedbackResponse:
       type: object
       properties:
-        id:
-          type: integer
-        message:
-          type: string
-      required:
-        - id
-        - message
+        id:      { type: integer }
+        message: { type: string }
+      required: [id, message]

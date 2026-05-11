@@ -26,7 +26,7 @@ export function NutritionComparison({ original, substituted }: NutritionComparis
             <Activity className="text-primary w-6 h-6" />
             Nutrition Impact
           </h2>
-          <p className="text-muted-foreground mt-1">Total recipe comparison after recommended substitutions</p>
+          <p className="text-muted-foreground mt-1">Total recipe comparison using the top recommended substitution</p>
         </div>
         <div className="flex gap-4 text-sm font-medium">
           <div className="flex items-center gap-2">

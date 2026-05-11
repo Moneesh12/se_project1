@@ -4,13 +4,24 @@ import * as schema from "./schema";
 
 const { Pool } = pg;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
+let pool: pg.Pool | null = null;
+let db: ReturnType<typeof drizzle<typeof schema>> | null = null;
+
+if (process.env.DATABASE_URL) {
+  try {
+    pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    db = drizzle(pool, { schema });
+  } catch (err) {
+    console.error("Failed to initialize database connection:", err);
+    pool = null;
+    db = null;
+  }
+} else {
+  console.warn(
+    "WARNING: DATABASE_URL is not set. Database features will be unavailable. " +
+    "Set DATABASE_URL in your .env file to enable database connectivity."
   );
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle(pool, { schema });
-
+export { pool, db };
 export * from "./schema";

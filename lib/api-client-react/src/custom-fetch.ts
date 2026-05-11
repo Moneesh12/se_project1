@@ -299,7 +299,14 @@ export async function customFetch<T = unknown>(
 
   const requestInfo = { method, url: resolveUrl(input) };
 
-  const response = await fetch(input, { ...init, method, headers });
+  const baseUrl = "http://localhost:4000";
+
+const finalUrl =
+  typeof input === "string" && input.startsWith("/api")
+    ? baseUrl + input
+    : input;
+
+const response = await fetch(finalUrl, { ...init, method, headers });
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);
