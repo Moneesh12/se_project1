@@ -6,6 +6,7 @@ import path from "path";
 const rawPort = process.env.PORT || "5173";
 const port = Number(rawPort);
 const finalPort = Number.isNaN(port) || port <= 0 ? 5173 : port;
+const apiTarget = process.env.VITE_API_BASE_URL || "http://localhost:4000";
 
 const basePath = process.env.BASE_PATH || "/";
 
@@ -48,6 +49,12 @@ export default defineConfig({
     port: finalPort,
     host: "0.0.0.0",
     allowedHosts: true,
+    proxy: {
+      "/api": {
+        target: apiTarget,
+        changeOrigin: true,
+      },
+    },
     fs: {
       strict: true,
       deny: ["**/.*"],

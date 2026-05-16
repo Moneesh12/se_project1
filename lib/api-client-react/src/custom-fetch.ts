@@ -298,15 +298,22 @@ export async function customFetch<T = unknown>(
   }
 
   const requestInfo = { method, url: resolveUrl(input) };
+  const configuredBaseUrl =
+    // Vite/ESM client builds
+    (typeof import.meta !== "undefined" &&
+      (import.meta as { env?: Record<string, string | undefined> }).env?.VITE_API_BASE_URL) ||
+    // Fallback env key if teams prefer URL naming
+    (typeof import.meta !== "undefined" &&
+      (import.meta as { env?: Record<string, string | undefined> }).env?.VITE_API_URL) ||
+    "";
 
-  const baseUrl = "http://localhost:4000";
+  const normalizedBaseUrl = configuredBaseUrl.trim().replace(/\/+$/, "");
+  const finalUrl =
+    typeof input === "string" && input.startsWith("/api") && normalizedBaseUrl
+      ? `${normalizedBaseUrl}${input}`
+      : input;
 
-const finalUrl =
-  typeof input === "string" && input.startsWith("/api")
-    ? baseUrl + input
-    : input;
-
-const response = await fetch(finalUrl, { ...init, method, headers });
+  const response = await fetch(finalUrl, { ...init, method, headers });
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);

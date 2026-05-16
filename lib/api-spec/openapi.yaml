@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: VitalSub API
-  version: 1.0.0
-  description: General-purpose intelligent ingredient substitution API
+  version: 2.0.0
+  description: Intelligent healthy ingredient substitution API with ML-based ranking and explainable recommendations
 servers:
   - url: /api
     description: Base API path
@@ -40,7 +40,8 @@ paths:
         Parses the ingredient list, normalizes variants (e.g. "brown sugar" → "sugar"),
         then runs a 3-layer substitution pipeline: direct DB mappings, functional/category
         matches, and cosine nutrition similarity. Returns ranked substitutes scored by
-        nutritional similarity, functional role, health improvement, and user feedback.
+        nutritional improvement (40%), similarity (40%), and user feedback (20%).
+        Each substitute includes an explainable reason and detailed nutritional comparison.
       requestBody:
         required: true
         content:
@@ -89,7 +90,7 @@ paths:
             type: string
       responses:
         "200":
-          description: Ranked list of substitutes
+          description: Ranked list of substitutes with explanations
           content:
             application/json:
               schema:
@@ -181,6 +182,25 @@ components:
         sugar:    { type: ["number", "null"] }
         sodium:   { type: ["number", "null"] }
 
+    ComparisonHighlights:
+      type: object
+      properties:
+        original:
+          type: object
+          properties:
+            name: { type: string }
+            highlights:
+              type: array
+              items: { type: string }
+        substitute:
+          type: object
+          properties:
+            name: { type: string }
+            highlights:
+              type: array
+              items: { type: string }
+        improvementSummary: { type: string }
+
     SubstituteWithNutrition:
       type: object
       properties:
@@ -192,8 +212,17 @@ components:
         reason:
           type: string
           description: Why this substitute was recommended
+        explanation:
+          type: string
+          description: Detailed explanation of the recommendation
+        improvements:
+          type: array
+          items: { type: string }
+          description: Key nutritional improvements
         nutrition:
           $ref: "#/components/schemas/NutritionData"
+        comparisonHighlights:
+          $ref: "#/components/schemas/ComparisonHighlights"
       required: [name, score]
 
     IngredientResult:

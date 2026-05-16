@@ -1,6 +1,6 @@
 /**
  * Ingredient Substitution API – Zod Schemas
- * General-purpose engine: no disease dependency.
+ * General-purpose intelligent substitution engine.
  */
 import * as zod from "zod";
 
@@ -26,12 +26,28 @@ const NutritionData = zod.object({
   sodium:   zod.number().nullish(),
 });
 
+/** Comparison highlights for a single ingredient pair */
+const ComparisonHighlights = zod.object({
+  original: zod.object({
+    name: zod.string(),
+    highlights: zod.array(zod.string()),
+  }),
+  substitute: zod.object({
+    name: zod.string(),
+    highlights: zod.array(zod.string()),
+  }),
+  improvementSummary: zod.string(),
+}).optional();
+
 /** Single substitute candidate */
 const SubstituteItem = zod.object({
   name:      zod.string(),
   score:     zod.number().describe("Composite score 0–100"),
   reason:    zod.string().optional().describe("Why this substitute was recommended"),
+  explanation: zod.string().optional().describe("Detailed explanation of the recommendation"),
+  improvements: zod.array(zod.string()).optional().describe("List of key nutritional improvements"),
   nutrition: NutritionData.optional(),
+  comparisonHighlights: ComparisonHighlights,
 });
 
 /** Per-ingredient result */
@@ -66,7 +82,10 @@ export const GetSubstitutesResponseItem = zod.object({
   name:      zod.string(),
   score:     zod.number(),
   reason:    zod.string().optional(),
+  explanation: zod.string().optional(),
+  improvements: zod.array(zod.string()).optional(),
   nutrition: NutritionData.optional(),
+  comparisonHighlights: ComparisonHighlights,
 });
 export const GetSubstitutesResponse = zod.array(GetSubstitutesResponseItem);
 
