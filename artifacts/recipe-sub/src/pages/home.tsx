@@ -1,27 +1,65 @@
 import React, { useState } from "react";
+import { Link } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChefHat, Sparkles, ArrowRight, ArrowDown,
   AlertOctagon, CheckCircle2, Leaf, Search, RefreshCcw,
   TrendingDown, Info, ChevronDown, ChevronUp,
+  User, LogOut, LayoutDashboard, Heart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { EmojiIcon } from "@/components/emoji-icon";
 import { FeedbackWidget } from "@/components/feedback-widget";
 import { NutritionComparison } from "@/components/nutrition-comparison";
+import BrandRecommendation from "@/components/BrandRecommendation";
 import { useAnalyzeRecipe } from "@workspace/api-client-react";
+import { useAuth } from "@/hooks/use-auth";
+import * as authApi from "@/lib/auth-api";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export default function Home() {
   const [recipeText, setRecipeText] = useState("");
+  const { user, logout } = useAuth();
 
   const { mutate: analyze, data: results, isPending, error, reset } = useAnalyzeRecipe();
 
   const handleAnalyze = (e: React.FormEvent) => {
     e.preventDefault();
     if (!recipeText.trim()) return;
-    analyze({ data: { recipe: recipeText } });
+    analyze(
+      { data: { recipe: recipeText } },
+      {
+        onSuccess: async (data) => {
+          if (!user || !data?.parsedIngredients) return;
+
+          const entries = data.parsedIngredients
+            .filter((ing: any) => ing.hasSubstitutes && ing.substitutes?.[0])
+            .map((ing: any) => ({
+              ingredient: ing.name,
+              substitute: ing.substitutes[0].name,
+              action: "saved",
+            }));
+
+          if (entries.length === 0) return;
+
+          try {
+            await authApi.addBatchHistory(entries);
+          } catch {
+            // silent — history save is non-critical
+          }
+        },
+      }
+    );
   };
 
   const handleReset = () => {
@@ -37,14 +75,49 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src={`${import.meta.env.BASE_URL}images/logo.png`} alt="Logo" className="w-10 h-10 object-contain" />
-            <span className="font-display font-bold text-xl tracking-tight text-foreground">
+            <Link href="/" className="font-display font-bold text-xl tracking-tight text-foreground">
               Vital<span className="text-primary">Sub</span>
-            </span>
+            </Link>
           </div>
           <div className="flex items-center gap-4">
-            <a href="https://github.com" target="_blank" rel="noreferrer" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Documentation
-            </a>
+            <Link href="/about" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+              About Us
+            </Link>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-2 p-1.5 rounded-2xl hover:bg-slate-100 transition-colors">
+                    <Avatar className="w-8 h-8 bg-primary/10">
+                      <AvatarFallback className="text-primary font-bold text-xs">
+                        {user.username.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm font-medium text-foreground hidden sm:block">{user.username}</span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="rounded-2xl p-2 min-w-[180px]">
+                  <DropdownMenuItem asChild className="rounded-xl">
+                    <Link href="/dashboard" className="flex items-center gap-2 cursor-pointer">
+                      <LayoutDashboard className="w-4 h-4" />
+                      Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={logout} className="rounded-xl text-destructive focus:text-destructive cursor-pointer">
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <Link href="/login">
+                  <Button variant="ghost" size="sm">Sign In</Button>
+                </Link>
+                <Link href="/signup">
+                  <Button size="sm" className="bg-primary text-primary-foreground">Get Started</Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
@@ -185,8 +258,8 @@ export default function Home() {
 
             {/* Ingredient Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {results.parsedIngredients.map((ing, idx) => (
-                <IngredientCard key={idx} ing={ing} idx={idx} />
+              {results.parsedIngredients.map((ing: any, idx: number) => (
+                <IngredientCard key={idx} ing={ing} idx={idx} user={user} />
               ))}
             </div>
 
@@ -213,9 +286,38 @@ export default function Home() {
 
 // ─── Ingredient Card Component ───────────────────────────────────────────────
 
-function IngredientCard({ ing, idx }: { ing: any; idx: number }) {
+function IngredientCard({ ing, idx, user }: { ing: any; idx: number; user: any }) {
   const [expanded, setExpanded] = useState(false);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const topSub = ing.substitutes?.[0];
+
+  const isFavorited = (sub: string) => favorites.has(`${ing.name}:${sub}`.toLowerCase());
+
+  const handleToggleFavorite = async (substitute: string) => {
+    if (!user) {
+      toast.error("Sign in required", { description: "Log in to save favorites." });
+      return;
+    }
+
+    const key = `${ing.name}:${substitute}`.toLowerCase();
+    if (isFavorited(substitute)) {
+      try {
+        await authApi.removeFavoriteSubstitute(ing.name, substitute);
+        setFavorites((prev) => { const next = new Set(prev); next.delete(key); return next; });
+        toast.success("Removed from favorites");
+      } catch {
+        toast.error("Failed to remove favorite");
+      }
+    } else {
+      try {
+        await authApi.saveFavoriteSubstitute(ing.name, substitute);
+        setFavorites((prev) => { const next = new Set(prev); next.add(key); return next; });
+        toast.success("Added to favorites");
+      } catch {
+        toast.error("Failed to save favorite");
+      }
+    }
+  };
 
   return (
     <motion.div
@@ -233,7 +335,9 @@ function IngredientCard({ ing, idx }: { ing: any; idx: number }) {
             {ing.normalizedName && (
               <p className="text-xs text-muted-foreground mt-0.5">→ normalized: <span className="font-medium">{ing.normalizedName}</span></p>
             )}
-            {ing.hasSubstitutes ? (
+            {ing.isInvalid ? (
+              <Badge variant="destructive" className="mt-1"><AlertOctagon className="w-3 h-3 mr-1" /> Invalid Input</Badge>
+            ) : ing.hasSubstitutes ? (
               <Badge variant="success" className="mt-1"><Leaf className="w-3 h-3 mr-1" /> Has Substitutes</Badge>
             ) : (
               <Badge variant="secondary" className="mt-1"><CheckCircle2 className="w-3 h-3 mr-1" /> No Change Needed</Badge>
@@ -260,7 +364,21 @@ function IngredientCard({ ing, idx }: { ing: any; idx: number }) {
                   <EmojiIcon name={topSub.name} className="w-10 h-10 text-xl bg-white shadow-sm" />
                   <span className="font-bold text-foreground capitalize text-lg">{topSub.name}</span>
                 </div>
-                <Badge variant="success">Score {topSub.score}%</Badge>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleToggleFavorite(topSub.name)}
+                    className={cn(
+                      "p-1.5 rounded-full transition-all duration-200",
+                      isFavorited(topSub.name)
+                        ? "text-red-500 bg-red-50 hover:bg-red-100"
+                        : "text-muted-foreground hover:text-red-400 hover:bg-red-50"
+                    )}
+                    title={isFavorited(topSub.name) ? "Remove from favorites" : "Add to favorites"}
+                  >
+                    <Heart className={cn("w-4 h-4", isFavorited(topSub.name) && "fill-current")} />
+                  </button>
+                  <Badge variant="success">Score {topSub.score}%</Badge>
+                </div>
               </div>
 
               {/* Explanation reason */}
@@ -327,12 +445,13 @@ function IngredientCard({ ing, idx }: { ing: any; idx: number }) {
                 </div>
               )}
 
-              <FeedbackWidget ingredient={ing.name} substitute={topSub.name} />
+              <FeedbackWidget ingredient={ing.name} substitute={topSub.name} user={user} />
+              <BrandRecommendation substituteName={topSub.name} />
             </div>
 
             {/* Additional substitutes (collapsed) */}
             {ing.substitutes.length > 1 && (
-              <AlternativeSubstitutes substitutes={ing.substitutes.slice(1, 4)} ingredientName={ing.name} />
+              <AlternativeSubstitutes substitutes={ing.substitutes.slice(1, 4)} ingredientName={ing.name} user={user} />
             )}
           </div>
         </div>
@@ -343,8 +462,31 @@ function IngredientCard({ ing, idx }: { ing: any; idx: number }) {
 
 // ─── Alternative Substitutes ─────────────────────────────────────────────────
 
-function AlternativeSubstitutes({ substitutes, ingredientName }: { substitutes: any[]; ingredientName: string }) {
+function AlternativeSubstitutes({ substitutes, ingredientName, user }: { substitutes: any[]; ingredientName: string; user: any }) {
   const [showAlts, setShowAlts] = useState(false);
+  const [altFavorites, setAltFavorites] = useState<Set<string>>(new Set());
+
+  const isFavorited = (sub: string) => altFavorites.has(`${ingredientName}:${sub}`.toLowerCase());
+
+  const handleToggleFavorite = async (substitute: string) => {
+    if (!user) {
+      toast.error("Sign in required", { description: "Log in to save favorites." });
+      return;
+    }
+
+    const key = `${ingredientName}:${substitute}`.toLowerCase();
+    if (isFavorited(substitute)) {
+      try {
+        await authApi.removeFavoriteSubstitute(ingredientName, substitute);
+        setAltFavorites((prev) => { const next = new Set(prev); next.delete(key); return next; });
+      } catch {}
+    } else {
+      try {
+        await authApi.saveFavoriteSubstitute(ingredientName, substitute);
+        setAltFavorites((prev) => { const next = new Set(prev); next.add(key); return next; });
+      } catch {}
+    }
+  };
 
   return (
     <div className="mt-2">
@@ -375,7 +517,20 @@ function AlternativeSubstitutes({ substitutes, ingredientName }: { substitutes: 
                     )}
                   </div>
                 </div>
-                <Badge variant="secondary" className="text-xs">{sub.score}%</Badge>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleToggleFavorite(sub.name)}
+                    className={cn(
+                      "p-1 rounded-full transition-colors",
+                      isFavorited(sub.name)
+                        ? "text-red-500"
+                        : "text-muted-foreground hover:text-red-400"
+                    )}
+                  >
+                    <Heart className={cn("w-3.5 h-3.5", isFavorited(sub.name) && "fill-current")} />
+                  </button>
+                  <Badge variant="secondary" className="text-xs">{sub.score}%</Badge>
+                </div>
               </div>
             ))}
           </motion.div>

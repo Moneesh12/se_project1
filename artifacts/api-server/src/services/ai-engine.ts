@@ -20,6 +20,7 @@ export interface AiSubstituteResult {
   reason: string;
   explanation: string;
   improvements: string[];
+  nonFood?: boolean;
   originalNutrition?: {
     calories?: number;
     protein?: number;
@@ -73,6 +74,10 @@ function buildPrompt(ingredient: string, category: string): string {
 
 Given the ingredient: "${ingredient}"
 
+First, determine if "${ingredient}" is a real food ingredient commonly used in cooking or baking.
+- If NO (e.g., it is a non-food item like furniture, electronics, a name, or a chemical), return ONLY this JSON: {"nonFood": true}
+- If YES, ignore this instruction and continue with the substitute suggestion below.
+
 Suggest ONE healthy substitute that:
 1. Preserves the ingredient's FUNCTIONALITY in recipes (${FALLBACK_CATEGORY_LABELS[category] || "a healthy alternative"})
 2. Belongs to the SAME FUNCTIONAL CATEGORY
@@ -112,6 +117,10 @@ function parseAiResponse(text: string): AiSubstituteResult | null {
     cleaned = cleaned.trim();
 
     const parsed = JSON.parse(cleaned);
+
+    if (parsed.nonFood === true) {
+      return { name: "", score: 0, reason: "", explanation: "", improvements: [], nonFood: true };
+    }
 
     if (!parsed.name || typeof parsed.name !== "string") {
       console.warn("[AI Engine] Missing or invalid 'name' in model response");

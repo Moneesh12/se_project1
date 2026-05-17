@@ -53,10 +53,11 @@ const SubstituteItem = zod.object({
 /** Per-ingredient result */
 const IngredientResult = zod.object({
   name:            zod.string(),
-  normalizedName:  zod.string().optional().describe("Canonical form if input was a variant"),
+  normalizedName:  zod.string().optional(),
   hasSubstitutes:  zod.boolean(),
   substitutes:     zod.array(SubstituteItem),
   originalNutrition: NutritionData.optional(),
+  isInvalid:       zod.boolean().optional(),
 });
 
 /** POST /analyze-recipe response */
@@ -98,4 +99,50 @@ export const SubmitFeedbackBody = zod.object({
   ingredient: zod.string(),
   substitute: zod.string(),
   rating:     zod.number().int().min(1).max(5).describe("Rating from 1 to 5"),
+});
+
+// ─── OTP ──────────────────────────────────────────────────────────────────────
+
+export const SendOtpBody = zod.object({
+  username: zod.string().min(3).max(30),
+  email: zod.string().email(),
+  password: zod.string().min(8),
+});
+
+export const VerifyOtpBody = zod.object({
+  username: zod.string().min(3).max(30),
+  email: zod.string().email(),
+  password: zod.string().min(8),
+  otp: zod.string().length(6),
+});
+
+// ─── Auth ──────────────────────────────────────────────────────────────────────
+
+export const SignupBody = zod.object({
+  username: zod.string().min(3).max(30),
+  email: zod.string().email(),
+  password: zod.string().min(8),
+});
+
+export const LoginBody = zod.object({
+  email: zod.string().email(),
+  password: zod.string().min(1),
+});
+
+export const AuthUserResponse = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  email: zod.string(),
+  profilePicture: zod.string().nullable().optional(),
+  dietaryPreferences: zod.array(zod.string()).nullable().optional(),
+  createdAt: zod.string().datetime().or(zod.date()),
+});
+
+export const AuthResultResponse = zod.object({
+  user: AuthUserResponse,
+  token: zod.string(),
+});
+
+export const MeResponse = zod.object({
+  user: AuthUserResponse,
 });

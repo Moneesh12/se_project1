@@ -1,0 +1,9 @@
+node_modules
+.local
+.git
+attached_assets
+sr_legacy
+substitution_dataset
+foundations_food
+scripts
+.vscode

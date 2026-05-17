@@ -52,7 +52,13 @@ Thumbs.db
 substitution_dataset/
 foundations_food/
 *.json
+!**/package.json
+!**/tsconfig*.json
+!**/drizzle.config.json
 *.csv
 
 # Security
 .env
+
+.vercel
+.env*.local

@@ -3,13 +3,16 @@ import { ThumbsUp, ThumbsDown, CheckCircle2 } from "lucide-react";
 import { useSubmitFeedback } from "@workspace/api-client-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import * as authApi from "@/lib/auth-api";
+import { toast } from "sonner";
 
 interface FeedbackWidgetProps {
   ingredient: string;
   substitute: string;
+  user?: any;
 }
 
-export function FeedbackWidget({ ingredient, substitute }: FeedbackWidgetProps) {
+export function FeedbackWidget({ ingredient, substitute, user }: FeedbackWidgetProps) {
   const [submitted, setSubmitted] = useState(false);
   const [hovered, setHovered] = useState<"up" | "down" | null>(null);
   const { mutate, isPending } = useSubmitFeedback();
@@ -18,7 +21,12 @@ export function FeedbackWidget({ ingredient, substitute }: FeedbackWidgetProps) 
     mutate(
       { data: { ingredient, substitute, rating } },
       {
-        onSuccess: () => setSubmitted(true),
+        onSuccess: () => {
+          setSubmitted(true);
+          if (rating === 5 && user) {
+            authApi.saveFavoriteSubstitute(ingredient, substitute).catch(() => {});
+          }
+        },
       }
     );
   };

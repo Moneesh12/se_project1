@@ -114,11 +114,13 @@ export function functionalSimilarity(
 
 /**
  * Composite score (0–100) combining:
- *   40% nutritional improvement (health gain)
- *   40% nutritional similarity (cosine)
+ *   35% nutritional improvement (health gain)
+ *   35% nutritional similarity (cosine)
+ *   10% flavor profile similarity
  *   20% user feedback rating
  *   +5  bonus for verified direct mapping
  *   +3  bonus for same functional role
+ *   +3  bonus for shared flavor profile
  */
 export function scoreSubstitute(params: {
   origNut: NutritionRow;
@@ -130,11 +132,13 @@ export function scoreSubstitute(params: {
   feedbackRating: number | null;
   isDirect: boolean;
   confidence?: number;
+  flavorSimilarity?: number;
 }): number {
   const {
     origNut, subNut, origRole, subRole,
     origCategory, subCategory, feedbackRating,
     isDirect, confidence,
+    flavorSimilarity = 0,
   } = params;
 
   const nutSim   = cosineSimilarity(toVector(origNut), toVector(subNut));
@@ -142,16 +146,17 @@ export function scoreSubstitute(params: {
   const healthSc = healthImprovementScore(origNut, subNut);
   const fbScore  = feedbackRating !== null ? feedbackRating / 5 : 0.5;
 
-  // Weighted combination (40/40/20 as required)
-  let raw = 0.40 * healthSc + 0.40 * nutSim + 0.20 * fbScore;
+  // Weighted combination (35/35/10/20)
+  let raw = 0.35 * healthSc + 0.35 * nutSim + 0.10 * flavorSimilarity + 0.20 * fbScore;
 
   // Bonuses
   if (isDirect) raw += 0.05;
   if (funcSim >= 1.0) raw += 0.03;
+  if (flavorSimilarity >= 0.5) raw += 0.03;
 
   // Confidence multiplier from dataset
   if (confidence !== undefined && confidence > 0) {
-    raw *= (0.8 + 0.2 * confidence); // slight boost for high-confidence pairs
+    raw *= (0.8 + 0.2 * confidence);
   }
 
   return Math.round(Math.min(100, raw * 100));

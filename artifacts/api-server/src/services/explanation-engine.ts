@@ -61,6 +61,7 @@ export function generateExplanation(
   subNut: NutritionRow,
   functionalRole: string | null | undefined,
   matchSource: string,
+  flavorSimilarity?: number,
 ): ExplanationResult {
   const nutrients = ["calories", "sugar", "sodium", "protein", "fat", "carbs"] as const;
   const reductions: ExplanationResult["reductions"] = {};
@@ -89,7 +90,7 @@ export function generateExplanation(
   }
 
   // Build the one-line reason
-  const reason = buildReason(originalName, substituteName, reductions, functionalRole, matchSource);
+  const reason = buildReason(originalName, substituteName, reductions, functionalRole, matchSource, flavorSimilarity);
 
   // Build the detailed explanation
   const explanation = buildDetailedExplanation(
@@ -107,6 +108,7 @@ function buildReason(
   reductions: ExplanationResult["reductions"],
   role: string | null | undefined,
   source: string,
+  flavorSimilarity?: number,
 ): string {
   const parts: string[] = [];
 
@@ -132,10 +134,16 @@ function buildReason(
     parts.push(`more protein`);
   }
 
+  if (flavorSimilarity !== undefined && flavorSimilarity >= 0.5) {
+    parts.push(`a compatible flavor profile`);
+  }
+
   if (parts.length === 0) {
-    // Fallback to generic
     if (source.includes("direct") || source.includes("Verified")) {
       return `${capitalize(subName)} is a verified healthy substitute for ${origName}${roleStr}.`;
+    }
+    if (flavorSimilarity !== undefined && flavorSimilarity >= 0.5) {
+      return `${capitalize(subName)} shares a compatible flavor profile with ${origName}${roleStr}.`;
     }
     return `${capitalize(subName)} can serve${roleStr} with a comparable nutritional profile.`;
   }

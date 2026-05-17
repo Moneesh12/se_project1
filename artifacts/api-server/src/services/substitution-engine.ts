@@ -17,6 +17,7 @@ import {
   generateNutritionalComparison,
 } from "./explanation-engine";
 import { generateFallbackSubstitute } from "./ai-engine";
+import { flavorSimilarity } from "./flavor-engine";
 
 export interface ScoredSubstitute {
   name: string;
@@ -39,6 +40,7 @@ export interface IngredientAnalysis {
   hasSubstitutes: boolean;
   substitutes: ScoredSubstitute[];
   originalNutrition: NutritionRow | null;
+  isInvalid?: boolean;
 }
 
 export interface RecipeAnalysisResult {
@@ -111,12 +113,23 @@ function normalizeSearchTerm(input: string): string {
 
 function inferRole(name: string, category?: string | null): string {
   const text = `${name} ${category || ""}`.toLowerCase();
-  if (/(stevia|sweetener|sugar|honey|syrup|molasses|monk fruit|fructose|sucralose|aspartame)/.test(text)) return "sweetener";
+  if (/(stevia|sweetener|sugar|honey|syrup|molasses|monk fruit|fructose|sucralose|aspartame|candy|chocolate|dessert)/.test(text)) return "sweetener";
   if (/(milk|soymilk|soy milk|almond milk|oat milk|coconut milk|cream|yogurt|yoghurt|kefir)/.test(text)) return "dairy";
   if (/(butter|oil|ghee|margarine|shortening|lard|tallow)/.test(text)) return "fat";
-  if (/(flour|starch|cornstarch|arrowroot|tapioca)/.test(text)) return "thickener";
+  if (/(flour|starch|cornstarch|arrowroot|tapioca|bread|pasta|noodle|rice|cracker|tortilla|wrap)/.test(text)) return "thickener";
   if (/(salt|soy sauce|vinegar|seasoning|spice)/.test(text)) return "seasoning";
   return "other";
+}
+
+function isSameRootIngredient(originalName: string, candidateName: string): boolean {
+  const orig = normalizeSearchTerm(originalName);
+  const cand = normalizeSearchTerm(candidateName);
+  if (orig === cand) return true;
+  const TRIVIAL_WORDS = new Set(["oil", "powder", "extract", "cream", "liquid", "paste", "concentrate", "butter"]);
+  const oWords = orig.split(" ");
+  const cWords = cand.split(" ");
+  if (cWords.length === oWords.length + 1 && cWords.slice(0, -1).join(" ") === orig && TRIVIAL_WORDS.has(cWords[cWords.length - 1])) return true;
+  return false;
 }
 
 function isLikelySingleIngredientLabel(label: string): boolean {
@@ -267,9 +280,12 @@ function adjustRoleScore(
   }
 
   if (origRole === "fat") {
-    if (subRole === "dairy") score += 12;
+    if (subRole === "fat" || subRole === "dairy") score += 12;
     if (/(margarine|spread|shortening)/.test(lowerName)) score -= 12;
     if (subSodium > origSodium * 1.2) score -= 10;
+    const subFat = subNut.fat ?? 0;
+    if (subFat < 10) score -= 35;
+    else if (subFat < 30) score -= 15;
   }
 
   if (origRole === "dairy") {
@@ -342,6 +358,8 @@ async function findSubstitutes(origName: string): Promise<ScoredSubstitute[]> {
     if (!resolved) continue;
     if (!isLikelySingleIngredientLabel(resolved.name) && !isLikelySingleIngredientLabel(resolved.canonicalName || "")) continue;
     if (normalizeSearchTerm(resolved.name) === normalizeSearchTerm(original?.name || origName)) continue;
+    if (isSameRootIngredient(original?.name || origName, resolved.name)) continue;
+    if (origRole === "fat" && /(peanut|almond|cashew|walnut|pecan|hazelnut|macadamia|sunflower|sesame|pumpkin|nut|seed)\s+butter/i.test(resolved.name)) continue;
 
     const subRole = inferRole(resolved.name, resolved.category);
     if (!roleCompatible(origRole, subRole)) continue;
@@ -364,9 +382,10 @@ async function findSubstitutes(origName: string): Promise<ScoredSubstitute[]> {
     if (clearlyUnhealthySwap(origNut, subNut, origRole)) continue;
 
     const healthScore = healthImprovementScore(origNut, subNut);
-    if (healthScore < 0.35 && meta.isDirect) continue;
+    if (healthScore < 0.35 && meta.isDirect && origRole !== subRole) continue;
 
     const fbRating = await getFeedbackRating(origName, resolved.name);
+    const flavorSim = await flavorSimilarity(origName, resolved.name);
     const baseScore = scoreSubstitute({
       origNut,
       subNut,
@@ -377,6 +396,7 @@ async function findSubstitutes(origName: string): Promise<ScoredSubstitute[]> {
       feedbackRating: fbRating,
       isDirect: meta.isDirect,
       confidence: meta.confidence,
+      flavorSimilarity: flavorSim,
     });
     const score = adjustRoleScore(baseScore, origRole, subRole, resolved.name, origNut, subNut);
 
@@ -386,7 +406,8 @@ async function findSubstitutes(origName: string): Promise<ScoredSubstitute[]> {
       origNut,
       subNut,
       origRole,
-      meta.reason
+      meta.reason,
+      flavorSim,
     );
     const comparison = generateNutritionalComparison(origName, resolved.name, origNut, subNut);
 
@@ -411,6 +432,17 @@ async function findSubstitutes(origName: string): Promise<ScoredSubstitute[]> {
 
   if (scored.length === 0) {
     const geminiResult = await generateFallbackSubstitute(origName);
+    if (geminiResult && (geminiResult as any).nonFood) {
+      scored.push({
+        name: `__invalid__`,
+        score: 0,
+        reason: "",
+        explanation: "",
+        improvements: [],
+        nutrition: {},
+      });
+      return scored;
+    }
     if (geminiResult) {
       const normalizedSub = await normalizeIngredient(geminiResult.name);
       const subResolved = await resolveIngredient(normalizedSub);
@@ -481,7 +513,8 @@ export async function analyzeRecipe(recipeText: string): Promise<RecipeAnalysisR
       const origNut = toNutrition(original);
 
       const substitutes = await findSubstitutes(normalized);
-      const hasSubstitutes = substitutes.length > 0 && !substitutes[0].name.startsWith("Any ");
+      const isInvalid = substitutes.length > 0 && substitutes[0].name === "__invalid__";
+      const hasSubstitutes = substitutes.length > 0 && !substitutes[0].name.startsWith("Any ") && !isInvalid;
 
       const effectiveOrigNut = (!original && hasSubstitutes && substitutes[0].estimatedOriginalNutrition)
         ? substitutes[0].estimatedOriginalNutrition
@@ -499,8 +532,9 @@ export async function analyzeRecipe(recipeText: string): Promise<RecipeAnalysisR
         name: raw,
         normalizedName: normalized !== raw ? normalized : undefined,
         hasSubstitutes,
-        substitutes,
+        substitutes: isInvalid ? [] : substitutes,
         originalNutrition: effectiveOrigNut,
+        ...(isInvalid ? { isInvalid: true } : {}),
       });
     } catch (err) {
       console.error("analyzeRecipe ingredient failure", { raw, normalized, err });
@@ -510,6 +544,7 @@ export async function analyzeRecipe(recipeText: string): Promise<RecipeAnalysisR
         hasSubstitutes: false,
         substitutes: [],
         originalNutrition: zeroNutrition(),
+        isInvalid: true,
       });
     }
   }
