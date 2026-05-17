@@ -1,20 +1,19 @@
-import nodemailer from "nodemailer";
-
 const SMTP_HOST = process.env.SMTP_HOST || "";
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || "587", 10);
 const SMTP_USER = process.env.SMTP_USER || "";
 const SMTP_PASS = process.env.SMTP_PASS || "";
 const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER || "noreply@vitalsub.app";
 
-let transporter: nodemailer.Transporter | null = null;
+let transporter: any | null = null;
 
-function createTransporter(): nodemailer.Transporter | null {
+async function createTransporter(): Promise<any | null> {
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
     console.warn("[EMAIL] SMTP not configured (SMTP_HOST/SMTP_USER/SMTP_PASS) — emails will be logged to console only.");
     return null;
   }
 
   console.log(`[EMAIL] Creating transporter: host=${SMTP_HOST} port=${SMTP_PORT} user=${SMTP_USER}`);
+  const nodemailer = await import("nodemailer");
   return nodemailer.createTransport({
     host: SMTP_HOST,
     port: SMTP_PORT,
@@ -25,7 +24,7 @@ function createTransporter(): nodemailer.Transporter | null {
   });
 }
 
-async function verifyTransporter(t: nodemailer.Transporter): Promise<boolean> {
+async function verifyTransporter(t: any): Promise<boolean> {
   try {
     await t.verify();
     console.log("[EMAIL] SMTP connection verified successfully");
@@ -38,7 +37,7 @@ async function verifyTransporter(t: nodemailer.Transporter): Promise<boolean> {
 
 export async function sendOtpEmail(recipientEmail: string, otp: string, expiresInMinutes: number): Promise<void> {
   if (!transporter) {
-    transporter = createTransporter();
+    transporter = await createTransporter();
   }
 
   if (!transporter) {
