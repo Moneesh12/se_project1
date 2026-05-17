@@ -51,7 +51,9 @@ async function buildAll() {
       !allowlist.includes(dep) &&
       !(pkg.dependencies?.[dep]?.startsWith("workspace:")),
   );
+  externals.push("nodemailer");
 
+  const externalSet = new Set(externals);
   await esbuild({
     entryPoints: [path.resolve(__dirname, "src/index.ts")],
     platform: "node",
@@ -64,6 +66,18 @@ async function buildAll() {
     minify: true,
     external: externals,
     logLevel: "info",
+    plugins: [
+      {
+        name: "external-force",
+        setup(build) {
+          build.onResolve({ filter: /.*/ }, (args) => {
+            if (externalSet.has(args.path)) {
+              return { path: args.path, external: true };
+            }
+          });
+        },
+      },
+    ],
   });
 }
 
