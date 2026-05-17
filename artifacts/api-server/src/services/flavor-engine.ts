@@ -13,14 +13,24 @@ import { readFile } from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Compatible with both ESM (dev/tsx) and CJS (production bundle)
+let flavordbPath: string;
+try {
+  const currentDir = typeof __dirname !== "undefined"
+    ? __dirname
+    : path.dirname(fileURLToPath(import.meta.url));
 
-// Resolve path to the dataset (relative to this file's location)
-const FLAVORDB_PATH = path.resolve(
-  __dirname, "..", "..", "..", "..",
-  "substitution_dataset", "archive (4)", "ingredient_to_flavordb.json"
-);
+  flavordbPath = path.resolve(
+    currentDir,
+    "..", "..", "..", "..",
+    "substitution_dataset", "archive (4)", "ingredient_to_flavordb.json"
+  );
+} catch {
+  flavordbPath = path.resolve(
+    process.cwd(),
+    "substitution_dataset", "archive (4)", "ingredient_to_flavordb.json"
+  );
+}
 
 interface FlavordbEntry {
   ingredient: string;
@@ -40,7 +50,7 @@ async function loadFlavorMap(): Promise<Map<string, FlavordbEntry>> {
   loadAttempted = true;
 
   try {
-    const raw = await readFile(FLAVORDB_PATH, "utf-8");
+    const raw = await readFile(flavordbPath, "utf-8");
     const data: Record<string, FlavordbEntry> = JSON.parse(raw);
     flavorMap = new Map();
 
