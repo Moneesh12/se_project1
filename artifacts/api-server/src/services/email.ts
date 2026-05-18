@@ -1,16 +1,16 @@
 import { Resend } from "resend";
 
-const RESEND_API_KEY = process.env.BREVO_API_KEY || "";
-const RESEND_FROM = process.env.BREVO_FROM || "";
-
 export async function sendOtpEmail(recipientEmail: string, otp: string, expiresInMinutes: number): Promise<void> {
-  if (!RESEND_API_KEY || !RESEND_FROM) {
-    console.warn("[EMAIL] Resend not configured (BREVO_API_KEY / BREVO_FROM) — emails will be logged to console only.");
+  const apiKey = process.env.BREVO_API_KEY || "";
+  const fromEmail = process.env.BREVO_FROM || "onboarding@resend.dev";
+
+  if (!apiKey) {
+    console.warn("[EMAIL] Resend not configured (BREVO_API_KEY) — emails will be logged to console only.");
     console.log(`[EMAIL] OTP for ${recipientEmail}: ${otp} (expires in ${expiresInMinutes} min)`);
     return;
   }
 
-  const resend = new Resend(RESEND_API_KEY);
+  const resend = new Resend(apiKey);
 
   const html = `
 <!DOCTYPE html>
@@ -48,7 +48,7 @@ export async function sendOtpEmail(recipientEmail: string, otp: string, expiresI
 
   try {
     await resend.emails.send({
-      from: RESEND_FROM,
+      from: fromEmail,
       to: recipientEmail,
       subject: "Your VitalSub verification code",
       html,
