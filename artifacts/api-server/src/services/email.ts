@@ -1,55 +1,26 @@
-const SMTP_HOST = process.env.SMTP_HOST || "";
-const SMTP_PORT = parseInt(process.env.SMTP_PORT || "587", 10);
-const SMTP_USER = process.env.SMTP_USER || "";
-const SMTP_PASS = process.env.SMTP_PASS || "";
-const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER || "noreply@vitalsub.app";
-
-let transporter: any | null = null;
-
-async function createTransporter(): Promise<any | null> {
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
-    console.warn("[EMAIL] SMTP not configured (SMTP_HOST/SMTP_USER/SMTP_PASS) — emails will be logged to console only.");
-    return null;
-  }
-
-  console.log(`[EMAIL] Creating transporter: host=${SMTP_HOST} port=${SMTP_PORT} user=${SMTP_USER}`);
-  const nodemailer = await import("nodemailer");
-  return nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: SMTP_PORT,
-    secure: SMTP_PORT === 465,
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
-    requireTLS: true,
-    tls: { rejectUnauthorized: false },
-  });
-}
-
-async function verifyTransporter(t: any): Promise<boolean> {
-  try {
-    await t.verify();
-    console.log("[EMAIL] SMTP connection verified successfully");
-    return true;
-  } catch (err: any) {
-    console.error(`[EMAIL] SMTP verification failed: ${err.message}`);
-    return false;
-  }
-}
+const BREVO_USER = process.env.BREVO_USER || "";
+const BREVO_PASS = process.env.BREVO_PASS || "";
+const BREVO_FROM = process.env.BREVO_FROM || BREVO_USER || "noreply@vitalsub.app";
 
 export async function sendOtpEmail(recipientEmail: string, otp: string, expiresInMinutes: number): Promise<void> {
-  if (!transporter) {
-    transporter = await createTransporter();
-  }
-
-  if (!transporter) {
+  if (!BREVO_USER || !BREVO_PASS) {
+    console.warn("[EMAIL] Brevo SMTP not configured (BREVO_USER/BREVO_PASS) — emails will be logged to console only.");
     console.log(`[EMAIL] OTP for ${recipientEmail}: ${otp} (expires in ${expiresInMinutes} min)`);
     return;
   }
 
-  if (transporter && !(await verifyTransporter(transporter))) {
-    transporter = null;
-    console.log(`[EMAIL] OTP for ${recipientEmail}: ${otp} (SMTP unavailable, logged as fallback)`);
-    return;
-  }
+  const nodemailer = await import("nodemailer");
+  const transporter = nodemailer.createTransport({
+    host: "smtp-relay.brevo.com",
+    port: 587,
+    secure: false,
+    auth: { user: BREVO_USER, pass: BREVO_PASS },
+    connectionTimeout: 10000,
+    greetingTimeout: 10000,
+    socketTimeout: 10000,
+  });
+
+  console.log(`[EMAIL] Sending OTP to ${recipientEmail} via smtp-relay.brevo.com:587`);
 
   const html = `
 <!DOCTYPE html>
@@ -87,7 +58,7 @@ export async function sendOtpEmail(recipientEmail: string, otp: string, expiresI
 
   try {
     await transporter.sendMail({
-      from: SMTP_FROM,
+      from: `VitalSub <${BREVO_FROM}>`,
       to: recipientEmail,
       subject: "Your VitalSub verification code",
       text: `Your VitalSub verification code is: ${otp}. It expires in ${expiresInMinutes} minutes.`,
@@ -96,12 +67,6 @@ export async function sendOtpEmail(recipientEmail: string, otp: string, expiresI
     console.log(`[EMAIL] OTP sent successfully to ${recipientEmail}`);
   } catch (err: any) {
     console.error(`[EMAIL] Failed to send OTP to ${recipientEmail}: code=${err.code} message=${err.message}`);
-
-    if (err.code === "EAUTH") {
-      transporter = null;
-      console.log("[EMAIL] Transporter reset due to auth failure — will retry with fresh connection next time.");
-    }
-
     console.log(`[EMAIL] OTP for ${recipientEmail}: ${otp} (email send failed, logged as fallback)`);
   }
 }
