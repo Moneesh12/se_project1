@@ -18,9 +18,8 @@
     "drizzle-orm": "catalog:",
     "express": "^5",
     "jsonwebtoken": "^9.0.3",
-    "nodemailer": "^6.10.1",
     "openai": "^6.37.0",
-    "sib-api-v3-sdk": "^8.5.0",
+    "resend": "^6.12.3",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -30,7 +29,6 @@
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "catalog:",
-    "@types/nodemailer": "^8.0.0",
     "esbuild": "^0.27.3",
     "tsx": "catalog:"
   }

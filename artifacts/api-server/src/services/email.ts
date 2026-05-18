@@ -1,19 +1,16 @@
-const SibApiV3Sdk = require("sib-api-v3-sdk");
+import { Resend } from "resend";
 
-const BREVO_API_KEY = process.env.BREVO_API_KEY || "";
-const BREVO_FROM = process.env.BREVO_FROM || "noreply@vitalsub.app";
+const RESEND_API_KEY = process.env.BREVO_API_KEY || "";
+const RESEND_FROM = process.env.BREVO_FROM || "";
 
 export async function sendOtpEmail(recipientEmail: string, otp: string, expiresInMinutes: number): Promise<void> {
-  if (!BREVO_API_KEY) {
-    console.warn("[EMAIL] Brevo API key not configured (BREVO_API_KEY) — emails will be logged to console only.");
+  if (!RESEND_API_KEY || !RESEND_FROM) {
+    console.warn("[EMAIL] Resend not configured (BREVO_API_KEY / BREVO_FROM) — emails will be logged to console only.");
     console.log(`[EMAIL] OTP for ${recipientEmail}: ${otp} (expires in ${expiresInMinutes} min)`);
     return;
   }
 
-  const client = SibApiV3Sdk.ApiClient.instance;
-  client.authentications["api-key"].apiKey = BREVO_API_KEY;
-
-  const api = new SibApiV3Sdk.TransactionalEmailsApi();
+  const resend = new Resend(RESEND_API_KEY);
 
   const html = `
 <!DOCTYPE html>
@@ -50,18 +47,15 @@ export async function sendOtpEmail(recipientEmail: string, otp: string, expiresI
 </html>`;
 
   try {
-    await api.sendTransacEmail({
-      sender: { email: "no-reply@brevosend.com", name: "VitalSub" },
-      to: [{ email: recipientEmail }],
+    await resend.emails.send({
+      from: RESEND_FROM,
+      to: recipientEmail,
       subject: "Your VitalSub verification code",
-      htmlContent: html,
-      textContent: `Your VitalSub verification code is: ${otp}. It expires in ${expiresInMinutes} minutes.`,
+      html,
     });
-    console.log(`[EMAIL] OTP sent successfully to ${recipientEmail} via Brevo API`);
+    console.log(`[EMAIL] OTP sent successfully to ${recipientEmail} via Resend`);
   } catch (err: any) {
-    const status = err.status || err.code || "unknown";
-    const message = err.message || err.statusText || String(err);
-    console.error(`[EMAIL] Failed to send OTP to ${recipientEmail}: status=${status} message=${message}`);
+    console.error(`[EMAIL] Failed to send OTP to ${recipientEmail}: message=${err.message || String(err)}`);
     console.log(`[EMAIL] OTP for ${recipientEmail}: ${otp} (email send failed, logged as fallback)`);
   }
 }
