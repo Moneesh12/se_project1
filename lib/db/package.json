@@ -10,7 +10,8 @@
   "scripts": {
     "seed": "npx tsx seed.ts",
     "push": "drizzle-kit push --config ./drizzle.config.ts",
-    "push-force": "drizzle-kit push --force --config ./drizzle.config.ts"
+    "push-force": "drizzle-kit push --force --config ./drizzle.config.ts",
+    "check-users": "npx tsx check-users.ts"
   },
   "dependencies": {
     "dotenv": "^17.4.2",
