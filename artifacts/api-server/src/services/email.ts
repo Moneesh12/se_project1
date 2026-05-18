@@ -51,7 +51,7 @@ export async function sendOtpEmail(recipientEmail: string, otp: string, expiresI
 
   try {
     await api.sendTransacEmail({
-      sender: { email: BREVO_FROM, name: "VitalSub" },
+      sender: { email: "no-reply@brevosend.com", name: "VitalSub" },
       to: [{ email: recipientEmail }],
       subject: "Your VitalSub verification code",
       htmlContent: html,
