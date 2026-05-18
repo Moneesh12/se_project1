@@ -35,8 +35,10 @@ export default function BrandRecommendation({
     let cancelled = false;
     setLoading(true);
 
+    const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+
     fetch(
-      `/api/brands/${encodeURIComponent(substituteName)}`
+      `${API_BASE}/api/brands/${encodeURIComponent(substituteName)}`
     )
       .then((r) => r.json())
       .then((result: BrandResult) => {
