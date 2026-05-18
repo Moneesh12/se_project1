@@ -62,3 +62,5 @@ foundations_food/
 
 .vercel
 .env*.local
+
+!substitution_dataset/archive (4)/ingredient_to_flavordb.json
