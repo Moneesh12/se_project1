@@ -1,5 +1,5 @@
-const rawApiBase = import.meta.env.VITE_API_BASE_URL || "";
-const API_BASE = rawApiBase.endsWith("/") ? rawApiBase.slice(0, -1) : rawApiBase;
+const rawApiBase = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/+$/, "");
+const API_BASE = rawApiBase;
 
 function getAuthHeaders(): Record<string, string> {
   const token = localStorage.getItem("auth_token");

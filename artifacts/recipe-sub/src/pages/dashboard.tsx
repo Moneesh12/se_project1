@@ -68,7 +68,7 @@ export default function Dashboard() {
     toast.success("Copied to clipboard");
   };
 
-  const getInitials = (name: string) => name.slice(0, 2).toUpperCase();
+  const getInitials = (name?: string) => (name ?? "").slice(0, 2).toUpperCase();
 
   if (authLoading) {
     return (

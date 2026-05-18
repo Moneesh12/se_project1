@@ -93,7 +93,7 @@ export default function Home() {
                   <button className="flex items-center gap-2 p-1.5 rounded-2xl hover:bg-slate-100 transition-colors">
                     <Avatar className="w-8 h-8 bg-primary/10">
                       <AvatarFallback className="text-primary font-bold text-xs">
-                        {user.name.slice(0, 2).toUpperCase()}
+                        {(user.name ?? "").slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <span className="text-sm font-medium text-foreground hidden sm:block">{user.name}</span>
@@ -262,7 +262,7 @@ export default function Home() {
 
             {/* Ingredient Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {results.parsedIngredients.map((ing: any, idx: number) => (
+              {(results.parsedIngredients ?? []).map((ing: any, idx: number) => (
                 <IngredientCard key={idx} ing={ing} idx={idx} user={user} />
               ))}
             </div>
@@ -427,7 +427,7 @@ function IngredientCard({ ing, idx, user }: { ing: any; idx: number; user: any }
                         </p>
 
                         {/* Comparison highlights */}
-                        {topSub.comparisonHighlights && (
+                        {topSub.comparisonHighlights?.original?.highlights && (
                           <div className="mt-2 grid grid-cols-2 gap-2">
                             <div className="bg-slate-50 rounded-lg p-2">
                               <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Original</p>
@@ -437,7 +437,7 @@ function IngredientCard({ ing, idx, user }: { ing: any; idx: number; user: any }
                             </div>
                             <div className="bg-emerald-50 rounded-lg p-2">
                               <p className="text-[10px] font-bold text-emerald-500 uppercase mb-1">Substitute</p>
-                              {topSub.comparisonHighlights.substitute.highlights.map((h: string, i: number) => (
+                              {topSub.comparisonHighlights.substitute?.highlights?.map((h: string, i: number) => (
                                 <p key={i} className="text-[11px] text-emerald-600">• {h}</p>
                               ))}
                             </div>
