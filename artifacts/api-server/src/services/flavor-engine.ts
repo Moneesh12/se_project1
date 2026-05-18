@@ -10,26 +10,58 @@
  */
 
 import { readFile } from "fs/promises";
+import { existsSync } from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-// Compatible with both ESM (dev/tsx) and CJS (production bundle)
 let flavordbPath: string;
-try {
-  const currentDir = typeof __dirname !== "undefined"
-    ? __dirname
-    : path.dirname(fileURLToPath(import.meta.url));
 
-  flavordbPath = path.resolve(
-    currentDir,
-    "..", "..", "..", "..",
+// 1. Try resolving relative to process.cwd() (workspace root)
+const cwdPath = path.resolve(
+  process.cwd(),
+  "substitution_dataset",
+  "archive (4)",
+  "ingredient_to_flavordb.json"
+);
+
+// 2. Try resolving relative to process.cwd() if started from a subdirectory (like artifacts/api-server)
+const subcwdPath = path.resolve(
+  process.cwd(),
+  "..", "..",
+  "substitution_dataset",
+  "archive (4)",
+  "ingredient_to_flavordb.json"
+);
+
+// 3. Fallback to production relative-path resolution (__dirname or import.meta.url)
+let productionPath: string;
+try {
+  // If running compiled CommonJS in dist/index.cjs, we are at depth 3
+  productionPath = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    "..", "..", "..",
     "substitution_dataset", "archive (4)", "ingredient_to_flavordb.json"
   );
 } catch {
-  flavordbPath = path.resolve(
-    process.cwd(),
+  // CommonJS fallback
+  productionPath = path.resolve(
+    __dirname,
+    "..", "..", "..",
     "substitution_dataset", "archive (4)", "ingredient_to_flavordb.json"
   );
+}
+
+// 4. Ultimate absolute path fallback for Render container environment
+const renderPath = "/opt/render/project/src/substitution_dataset/archive (4)/ingredient_to_flavordb.json";
+
+if (existsSync(cwdPath)) {
+  flavordbPath = cwdPath;
+} else if (existsSync(subcwdPath)) {
+  flavordbPath = subcwdPath;
+} else if (existsSync(productionPath)) {
+  flavordbPath = productionPath;
+} else {
+  flavordbPath = renderPath;
 }
 
 interface FlavordbEntry {
