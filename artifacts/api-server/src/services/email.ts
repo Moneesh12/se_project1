@@ -1,4 +1,4 @@
-import SibApiV3Sdk from "sib-api-v3-sdk";
+const SibApiV3Sdk = require("sib-api-v3-sdk");
 
 const BREVO_API_KEY = process.env.BREVO_API_KEY || "";
 const BREVO_FROM = process.env.BREVO_FROM || "noreply@vitalsub.app";

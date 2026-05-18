@@ -24,6 +24,7 @@ const allowlist = [
   "multer",
   "nanoid",
   "openai",
+  "sib-api-v3-sdk",
   "passport",
   "passport-local",
   "pg",
