@@ -26,10 +26,6 @@ const signupSchema = z.object({
   password: z.string()
     .min(8, "Password must be at least 8 characters")
     .regex(PASSWORD_REGEX, "Password must contain uppercase, lowercase, number, and special character"),
-  confirmPassword: z.string().min(1, "Confirm password is required"),
-}).refine(data => data.password === data.confirmPassword, {
-  message: "Passwords do not match",
-  path: ["confirmPassword"],
 });
 
 const loginSchema = z.object({

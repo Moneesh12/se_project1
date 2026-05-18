@@ -34,11 +34,11 @@ export interface AuthResult {
   token: string;
 }
 
-export async function signup(name: string, email: string, password: string, confirmPassword: string): Promise<AuthResult> {
+export async function signup(name: string, email: string, password: string): Promise<AuthResult> {
   const res = await fetch(`${API_BASE}/api/signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, email, password, confirmPassword }),
+    body: JSON.stringify({ name, email, password }),
   });
   return handleResponse<AuthResult>(res);
 }
