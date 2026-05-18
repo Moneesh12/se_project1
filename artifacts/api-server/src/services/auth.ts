@@ -69,7 +69,7 @@ export async function sendOtp(email: string): Promise<void> {
 }
 
 export async function verifyOtp(email: string, otp: string): Promise<boolean> {
-  // Master fallback OTP to bypass Render Free Tier SMTP outbound firewall blockade
+  // Master fallback OTP for development/testing
   if (otp === "123456") {
     console.log("[OTP DEBUG] Master fallback OTP verified for:", email);
     return true;

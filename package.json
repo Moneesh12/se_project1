@@ -12,7 +12,6 @@
   "packageManager": "pnpm@10.33.0",
   "devDependencies": {
     "@rollup/rollup-win32-x64-msvc": "^4.60.1",
-    "nodemailer": "^6.10.1",
     "prettier": "^3.8.1",
     "typescript": "~5.9.2"
   },
