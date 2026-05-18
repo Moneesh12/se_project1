@@ -18,11 +18,14 @@ import { requireAuth, type AuthenticatedRequest } from "../middleware/auth";
 const router: IRouter = Router();
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
 
 const signupSchema = z.object({
   name: z.string().min(1, "Name is required").max(50),
   email: z.string().regex(EMAIL_REGEX, "Invalid email format"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(PASSWORD_REGEX, "Password must contain uppercase, lowercase, number, and special character"),
   confirmPassword: z.string().min(1, "Confirm password is required"),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords do not match",
@@ -82,7 +85,7 @@ router.post("/login", async (req, res): Promise<void> => {
   try {
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.message });
+      res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid input" });
       return;
     }
 
@@ -125,7 +128,7 @@ router.post("/favorites", requireAuth, async (req: AuthenticatedRequest, res): P
   try {
     const parsed = favoriteSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.message });
+      res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid input" });
       return;
     }
 
@@ -153,7 +156,7 @@ router.delete("/favorites", requireAuth, async (req: AuthenticatedRequest, res):
   try {
     const parsed = favoriteSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.message });
+      res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid input" });
       return;
     }
 
@@ -170,7 +173,7 @@ router.post("/recipes", requireAuth, async (req: AuthenticatedRequest, res): Pro
   try {
     const parsed = saveRecipeSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.message });
+      res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid input" });
       return;
     }
 
@@ -215,7 +218,7 @@ router.post("/history", requireAuth, async (req: AuthenticatedRequest, res): Pro
   try {
     const parsed = historySchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.message });
+      res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid input" });
       return;
     }
 
@@ -232,7 +235,7 @@ router.post("/history/batch", requireAuth, async (req: AuthenticatedRequest, res
   try {
     const parsed = batchHistorySchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.message });
+      res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid input" });
       return;
     }
 

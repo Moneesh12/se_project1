@@ -1,13 +1,27 @@
 import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import { motion } from "framer-motion";
-import { Leaf, UserPlus, Sparkles, Eye, EyeOff, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
+import { Leaf, UserPlus, Sparkles, Eye, EyeOff, ArrowLeft, ArrowRight, Loader2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+
+function passwordChecks(pw: string) {
+  return {
+    minLength: pw.length >= 8,
+    hasUpper: /[A-Z]/.test(pw),
+    hasLower: /[a-z]/.test(pw),
+    hasNumber: /\d/.test(pw),
+    hasSpecial: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pw),
+  };
+}
+
+const allPass = (c: ReturnType<typeof passwordChecks>) =>
+  c.minLength && c.hasUpper && c.hasLower && c.hasNumber && c.hasSpecial;
 
 export default function Signup() {
   const [, setLocation] = useLocation();
@@ -19,7 +33,10 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const formValid = name.trim().length >= 1 && email.trim().length > 0 && password.length >= 6 && confirmPassword.length >= 1;
+  const pwCheck = passwordChecks(password);
+  const passwordStrong = password.length === 0 || allPass(pwCheck);
+  const passwordsMatch = confirmPassword.length === 0 || password === confirmPassword;
+  const formValid = name.trim().length >= 1 && email.trim().length > 0 && allPass(pwCheck) && password === confirmPassword;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,6 +44,11 @@ export default function Signup() {
 
     if (password !== confirmPassword) {
       toast.error("Passwords do not match");
+      return;
+    }
+
+    if (!allPass(pwCheck)) {
+      toast.error("Password must contain uppercase, lowercase, number, and special character");
       return;
     }
 
@@ -127,6 +149,7 @@ export default function Signup() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     autoComplete="new-password"
+                    className={cn(password.length > 0 && !passwordStrong && "border-destructive")}
                   />
                   <button
                     type="button"
@@ -136,6 +159,33 @@ export default function Signup() {
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                {password.length > 0 && !passwordStrong && (
+                  <p className="text-xs text-destructive mt-1">
+                    Password must contain uppercase, lowercase, number, and special character
+                  </p>
+                )}
+                {password.length > 0 && (
+                  <div className="space-y-1 mt-2">
+                    {[
+                      { key: "minLength" as const, label: "At least 8 characters" },
+                      { key: "hasUpper" as const, label: "One uppercase letter" },
+                      { key: "hasLower" as const, label: "One lowercase letter" },
+                      { key: "hasNumber" as const, label: "One number" },
+                      { key: "hasSpecial" as const, label: "One special character" },
+                    ].map(({ key, label }) => (
+                      <div key={key} className="flex items-center gap-1.5 text-xs">
+                        {pwCheck[key] ? (
+                          <Check className="w-3 h-3 text-emerald-500" />
+                        ) : (
+                          <X className="w-3 h-3 text-muted-foreground/50" />
+                        )}
+                        <span className={cn(pwCheck[key] ? "text-emerald-600" : "text-muted-foreground")}>
+                          {label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -148,9 +198,10 @@ export default function Signup() {
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                   autoComplete="new-password"
+                  className={cn(confirmPassword.length > 0 && !passwordsMatch && "border-destructive")}
                 />
-                {confirmPassword.length > 0 && password !== confirmPassword && (
-                  <p className="text-xs text-destructive">Passwords do not match</p>
+                {confirmPassword.length > 0 && !passwordsMatch && (
+                  <p className="text-xs text-destructive mt-1">Passwords do not match</p>
                 )}
               </div>
 

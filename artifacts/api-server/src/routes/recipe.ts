@@ -51,7 +51,7 @@ router.post("/analyze-recipe", async (req, res): Promise<void> => {
 
     const parsed = AnalyzeRecipeBody.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.message });
+      res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid input" });
       return;
     }
 
@@ -147,7 +147,7 @@ router.post("/feedback", async (req, res): Promise<void> => {
     if (!requireDb(res)) return;
     const parsed = SubmitFeedbackBody.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.message });
+      res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid input" });
       return;
     }
 
