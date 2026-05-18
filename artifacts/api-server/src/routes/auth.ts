@@ -58,7 +58,7 @@ router.post("/signup", async (req, res): Promise<void> => {
   try {
     const parsed = signupSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid input" });
+      res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid input" });
       return;
     }
 
@@ -81,7 +81,7 @@ router.post("/login", async (req, res): Promise<void> => {
   try {
     const parsed = loginSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid input" });
+      res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid input" });
       return;
     }
 
@@ -124,7 +124,7 @@ router.post("/favorites", requireAuth, async (req: AuthenticatedRequest, res): P
   try {
     const parsed = favoriteSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid input" });
+      res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid input" });
       return;
     }
 
@@ -152,7 +152,7 @@ router.delete("/favorites", requireAuth, async (req: AuthenticatedRequest, res):
   try {
     const parsed = favoriteSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid input" });
+      res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid input" });
       return;
     }
 
@@ -169,7 +169,7 @@ router.post("/recipes", requireAuth, async (req: AuthenticatedRequest, res): Pro
   try {
     const parsed = saveRecipeSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid input" });
+      res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid input" });
       return;
     }
 
@@ -214,7 +214,7 @@ router.post("/history", requireAuth, async (req: AuthenticatedRequest, res): Pro
   try {
     const parsed = historySchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid input" });
+      res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid input" });
       return;
     }
 
@@ -231,7 +231,7 @@ router.post("/history/batch", requireAuth, async (req: AuthenticatedRequest, res
   try {
     const parsed = batchHistorySchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid input" });
+      res.status(400).json({ error: parsed.error.issues[0]?.message || "Invalid input" });
       return;
     }
 
