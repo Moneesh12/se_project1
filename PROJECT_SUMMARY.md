@@ -15,7 +15,7 @@ College project to demonstrate full-stack development skills. Finding suitable i
    - **Save liked recipes** for later
    - **View substitution history**
    - **Save favorite substitutes**
-   - **Signup/login** via email OTP verification
+   - **Signup/login** with name, email & password
 6. Results displayed as visual cards with ingredient info and brand suggestions
 
 ## Tech Stack
@@ -27,7 +27,7 @@ College project to demonstrate full-stack development skills. Finding suitable i
 | **Backend** | Express 5 (Node.js) + TypeScript |
 | **Database** | PostgreSQL (Neon cloud) via Drizzle ORM |
 | **Auth** | bcryptjs + JWT tokens |
-| **Email (OTP)** | Resend API |
+| **Email** | None (OTP removed; direct signup) |
 | **AI/Data** | NVIDIA API + OpenAI for ingredient analysis |
 | **Build** | pnpm workspaces (monorepo), esbuild bundler |
 | **Deploy** | Render (backend), Vercel (frontend) |
@@ -46,19 +46,18 @@ College project to demonstrate full-stack development skills. Finding suitable i
 ## Key Features
 - **Ingredient analysis & substitution** from USDA + multiple datasets
 - **Brand recommendations** (best overall, cleanest, budget)
-- **User accounts** with email OTP verification (Resend)
+- **User accounts** with direct name/email/password signup
 - **Favorites & saved recipes** tied to user accounts
 - **Substitution history** tracking
 - **JWT-based authentication**
 
 ## API Endpoints
-- `POST /api/send-otp` — Request OTP for signup
-- `POST /api/signup` — Register with OTP verification
+- `POST /api/signup` — Register with name, email & password
 - `POST /api/login` — Authenticate & receive JWT
 - `GET /api/me` — Get current user profile
 - `POST /api/analyze-recipe` — Analyze recipe & get substitutes
 - `GET /api/brands/:substituteName` — Get brand recommendations
 - CRUD for favorites, saved recipes, history
 
-## Email Evolution
-Originally used **Nodemailer + Gmail SMTP** — timed out on Render (cloud blocks SMTP ports). Migrated through **Brevo SMTP → Brevo REST API → Resend API**. Resend uses HTTPS API calls (no SMTP sockets), so it works reliably on any cloud platform.
+## Auth Evolution
+Originally used **Nodemailer + Gmail SMTP** for OTP delivery — timed out on Render (cloud blocks SMTP ports). Migrated through **Brevo SMTP → Brevo REST API → Resend API** for OTP, but eventually **removed OTP entirely** in favor of direct name/email/password signup to eliminate email-sending failure points.
