@@ -2,18 +2,15 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import * as authApi from "@/lib/auth-api";
 
 interface User {
-  id: number;
-  username: string;
-  email: string;
-  profilePicture: string | null;
-  dietaryPreferences: string[] | null;
+  id: number; name: string; email: string;
+  profilePicture: string | null; dietaryPreferences: string[] | null;
 }
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (username: string, email: string, password: string, otp: string) => Promise<void>;
+  register: (name: string, email: string, password: string, confirmPassword: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -50,8 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(result.user);
   }, []);
 
-  const register = useCallback(async (username: string, email: string, password: string, otp: string) => {
-    const result = await authApi.signup(username, email, password, otp);
+  const register = useCallback(async (name: string, email: string, password: string, confirmPassword: string) => {
+    const result = await authApi.signup(name, email, password, confirmPassword);
     localStorage.setItem("auth_token", result.token);
     setUser(result.user);
   }, []);

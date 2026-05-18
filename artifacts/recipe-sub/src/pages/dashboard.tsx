@@ -114,12 +114,12 @@ export default function Dashboard() {
           <div className="flex items-center gap-4 mb-4">
             <Avatar className="w-16 h-16 bg-primary/10">
               <AvatarFallback className="text-primary font-bold text-lg">
-                {getInitials(user.username)}
+                {getInitials(user.name)}
               </AvatarFallback>
             </Avatar>
             <div>
               <h1 className="text-3xl font-bold text-foreground">
-                {user.username}'s Dashboard
+                {user.name}'s Dashboard
               </h1>
               <p className="text-muted-foreground text-sm">{user.email}</p>
             </div>

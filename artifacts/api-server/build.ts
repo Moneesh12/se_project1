@@ -24,7 +24,6 @@ const allowlist = [
   "multer",
   "nanoid",
   "openai",
-  "resend",
   "passport",
   "passport-local",
   "pg",

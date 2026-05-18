@@ -2,7 +2,7 @@ import { pgTable, serial, text, timestamp, integer, jsonb } from "drizzle-orm/pg
 
 export const usersTable = pgTable("users", {
   id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
+  name: text("name").notNull(),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   profilePicture: text("profile_picture"),
@@ -45,11 +45,4 @@ export const brandCacheTable = pgTable("brand_cache", {
   fetchedAt: timestamp("fetched_at").defaultNow().notNull(),
 });
 
-export const otpCodesTable = pgTable("otp_codes", {
-  id: serial("id").primaryKey(),
-  email: text("email").notNull(),
-  otp: text("otp").notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
-  used: text("used").default("false"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+

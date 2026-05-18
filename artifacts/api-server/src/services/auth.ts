@@ -1,18 +1,15 @@
-import { db, usersTable, favoriteSubstitutesTable, savedRecipesTable, substitutionHistoryTable, otpCodesTable } from "@workspace/db";
+import { db, usersTable, favoriteSubstitutesTable, savedRecipesTable, substitutionHistoryTable } from "@workspace/db";
 import { eq, and, desc, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import crypto from "crypto";
-import { sendOtpEmail } from "./email";
 
 const JWT_SECRET = process.env.JWT_SECRET || "vitalsub-dev-jwt-secret-change-in-production";
 const SALT_ROUNDS = 12;
 const TOKEN_EXPIRY = "7d";
-const OTP_EXPIRY_MINUTES = 5;
 
 export interface AuthUser {
   id: number;
-  username: string;
+  name: string;
   email: string;
   profilePicture: string | null;
   dietaryPreferences: string[] | null;
@@ -27,7 +24,7 @@ export interface AuthResult {
 function sanitizeUser(user: typeof usersTable.$inferSelect): AuthUser {
   return {
     id: user.id,
-    username: user.username,
+    name: user.name,
     email: user.email,
     profilePicture: user.profilePicture,
     dietaryPreferences: user.dietaryPreferences,
@@ -44,91 +41,26 @@ function getDb(): NonNullable<typeof db> {
   return db;
 }
 
-// ─── OTP ─────────────────────────────────────────────────────────────────────
-
-function generateOtp(): string {
-  return crypto.randomInt(100000, 999999).toString();
-}
-
-export async function sendOtp(email: string): Promise<void> {
-  const database = getDb();
-
-  await database
-    .delete(otpCodesTable)
-    .where(sql`lower(${otpCodesTable.email}) = lower(${email}) AND ${otpCodesTable.used} = 'false'`);
-
-  const otp = generateOtp();
-  const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
-
-  await database.insert(otpCodesTable).values({ email: email.toLowerCase(), otp, expiresAt });
-  console.log("[OTP DEBUG] Stored OTP for", email.toLowerCase(), ":", otp, "expires:", expiresAt);
-
-  sendOtpEmail(email, otp, OTP_EXPIRY_MINUTES).catch(err => {
-    console.error("[OTP] Background email send failed:", err);
-  });
-}
-
-export async function verifyOtp(email: string, otp: string): Promise<boolean> {
-  // Master fallback OTP for development/testing
-  if (otp === "123456") {
-    console.log("[OTP DEBUG] Master fallback OTP verified for:", email);
-    return true;
-  }
-
-  const database = getDb();
-
-  const [record] = await database
-    .select()
-    .from(otpCodesTable)
-    .where(
-      sql`lower(${otpCodesTable.email}) = lower(${email})
-          AND ${otpCodesTable.otp} = ${otp}
-          AND ${otpCodesTable.used} = 'false'`
-    )
-    .limit(1);
-
-  if (!record) {
-    console.log("[OTP DEBUG] No matching unused OTP for", email, "OTP:", otp);
-    return false;
-  }
-
-  const now = new Date();
-  const expiresAt = new Date(record.expiresAt);
-
-  if (expiresAt <= now) {
-    console.log("[OTP DEBUG] OTP expired. expiresAt:", expiresAt.toISOString(), "now:", now.toISOString());
-    return false;
-  }
-
-  await database
-    .update(otpCodesTable)
-    .set({ used: "true" })
-    .where(eq(otpCodesTable.id, record.id));
-
-  console.log("[OTP DEBUG] OTP verified and marked as used");
-  return true;
-}
-
 // ─── REGISTRATION ────────────────────────────────────────────────────────────
 
-export async function registerUser(username: string, email: string, password: string): Promise<AuthResult> {
+export async function registerUser(name: string, email: string, password: string): Promise<AuthResult> {
   const database = getDb();
 
   const existing = await database
     .select({ id: usersTable.id })
     .from(usersTable)
-    .where(sql`lower(${usersTable.email}) = lower(${email}) OR lower(${usersTable.username}) = lower(${username})`)
+    .where(sql`lower(${usersTable.email}) = lower(${email})`)
     .limit(1);
 
   if (existing.length > 0) {
-    throw new Error("A user with this email or username already exists");
+    throw new Error("Account already exists");
   }
 
   const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
 
   const [inserted] = await database
     .insert(usersTable)
-    .values({ username, email, passwordHash })
+    .values({ name, email, passwordHash })
     .returning();
 
   const user = sanitizeUser(inserted);

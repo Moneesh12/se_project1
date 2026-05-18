@@ -12,32 +12,26 @@ import {
   deleteSavedRecipe,
   addSubstitutionHistory,
   getSubstitutionHistory,
-  sendOtp,
-  verifyOtp,
 } from "../services/auth";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/auth";
 
 const router: IRouter = Router();
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
 const signupSchema = z.object({
-  username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
+  name: z.string().min(1, "Name is required").max(50),
   email: z.string().regex(EMAIL_REGEX, "Invalid email format"),
-  password: z.string().regex(PASSWORD_REGEX, "Password must be at least 8 characters with uppercase, lowercase, number, and special character"),
-  otp: z.string().length(6, "OTP must be 6 digits"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string().min(1, "Confirm password is required"),
+}).refine(data => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
 });
 
 const loginSchema = z.object({
   email: z.string().regex(EMAIL_REGEX, "Invalid email format"),
   password: z.string().min(1, "Password is required"),
-});
-
-const otpSchema = z.object({
-  username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/),
-  email: z.string().regex(EMAIL_REGEX, "Invalid email format"),
-  password: z.string().regex(PASSWORD_REGEX, "Password must be at least 8 characters with uppercase, lowercase, number, and special character"),
 });
 
 const favoriteSchema = z.object({
@@ -60,49 +54,22 @@ const batchHistorySchema = z.object({
   entries: z.array(historySchema).min(1).max(100),
 });
 
-// POST /send-otp
-router.post("/send-otp", async (req, res): Promise<void> => {
-  try {
-    const parsed = otpSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.message });
-      return;
-    }
-
-    const { email } = parsed.data;
-    await sendOtp(email);
-
-    res.json({ message: "OTP sent to email", email });
-  } catch (err) {
-    console.error("SEND OTP ERROR:", err instanceof Error ? err.stack : err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
 // POST /signup
 router.post("/signup", async (req, res): Promise<void> => {
   try {
     const parsed = signupSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: parsed.error.message });
+      res.status(400).json({ error: parsed.error.errors[0]?.message || "Invalid input" });
       return;
     }
 
-    const { username, email, password, otp } = parsed.data;
-    console.log("[OTP DEBUG] Signup attempt for", email, "with OTP:", otp);
-
-    const otpValid = await verifyOtp(email, otp);
-    if (!otpValid) {
-      res.status(400).json({ error: "Invalid or expired OTP" });
-      return;
-    }
-
-    const result = await registerUser(username, email, password);
+    const { name, email, password } = parsed.data;
+    const result = await registerUser(name, email, password);
 
     res.status(201).json(result);
   } catch (err: any) {
-    if (err.message?.includes("already exists")) {
-      res.status(409).json({ error: err.message });
+    if (err.message === "Account already exists") {
+      res.status(409).json({ error: "Account already exists" });
       return;
     }
     console.error("SIGNUP ERROR:", err instanceof Error ? err.stack : err);
@@ -243,7 +210,7 @@ router.delete("/recipes/:id", requireAuth, async (req: AuthenticatedRequest, res
   }
 });
 
-// POST /history (batch)
+// POST /history
 router.post("/history", requireAuth, async (req: AuthenticatedRequest, res): Promise<void> => {
   try {
     const parsed = historySchema.safeParse(req.body);

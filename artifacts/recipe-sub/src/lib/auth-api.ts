@@ -22,7 +22,7 @@ async function handleResponse<T>(res: Response): Promise<T> {
 
 export interface AuthUser {
   id: number;
-  username: string;
+  name: string;
   email: string;
   profilePicture: string | null;
   dietaryPreferences: string[] | null;
@@ -34,20 +34,11 @@ export interface AuthResult {
   token: string;
 }
 
-export async function sendOtp(username: string, email: string, password: string): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/send-otp`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, email, password }),
-  });
-  await handleResponse<{ message: string }>(res);
-}
-
-export async function signup(username: string, email: string, password: string, otp: string): Promise<AuthResult> {
+export async function signup(name: string, email: string, password: string, confirmPassword: string): Promise<AuthResult> {
   const res = await fetch(`${API_BASE}/api/signup`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, email, password, otp }),
+    body: JSON.stringify({ name, email, password, confirmPassword }),
   });
   return handleResponse<AuthResult>(res);
 }

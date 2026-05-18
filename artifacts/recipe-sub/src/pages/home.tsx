@@ -36,6 +36,10 @@ export default function Home() {
   const handleAnalyze = (e: React.FormEvent) => {
     e.preventDefault();
     if (!recipeText.trim()) return;
+    if (!user) {
+      toast.error("Please login or create an account to continue");
+      return;
+    }
     analyze(
       { data: { recipe: recipeText } },
       {
@@ -89,10 +93,10 @@ export default function Home() {
                   <button className="flex items-center gap-2 p-1.5 rounded-2xl hover:bg-slate-100 transition-colors">
                     <Avatar className="w-8 h-8 bg-primary/10">
                       <AvatarFallback className="text-primary font-bold text-xs">
-                        {user.username.slice(0, 2).toUpperCase()}
+                        {user.name.slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-sm font-medium text-foreground hidden sm:block">{user.username}</span>
+                    <span className="text-sm font-medium text-foreground hidden sm:block">{user.name}</span>
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="rounded-2xl p-2 min-w-[180px]">
