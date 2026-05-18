@@ -1,26 +1,19 @@
-const BREVO_USER = process.env.BREVO_USER || "";
-const BREVO_PASS = process.env.BREVO_PASS || "";
-const BREVO_FROM = process.env.BREVO_FROM || BREVO_USER || "noreply@vitalsub.app";
+import SibApiV3Sdk from "sib-api-v3-sdk";
+
+const BREVO_API_KEY = process.env.BREVO_API_KEY || "";
+const BREVO_FROM = process.env.BREVO_FROM || "noreply@vitalsub.app";
 
 export async function sendOtpEmail(recipientEmail: string, otp: string, expiresInMinutes: number): Promise<void> {
-  if (!BREVO_USER || !BREVO_PASS) {
-    console.warn("[EMAIL] Brevo SMTP not configured (BREVO_USER/BREVO_PASS) — emails will be logged to console only.");
+  if (!BREVO_API_KEY) {
+    console.warn("[EMAIL] Brevo API key not configured (BREVO_API_KEY) — emails will be logged to console only.");
     console.log(`[EMAIL] OTP for ${recipientEmail}: ${otp} (expires in ${expiresInMinutes} min)`);
     return;
   }
 
-  const nodemailer = await import("nodemailer");
-  const transporter = nodemailer.createTransport({
-    host: "smtp-relay.brevo.com",
-    port: 587,
-    secure: false,
-    auth: { user: BREVO_USER, pass: BREVO_PASS },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
-  });
+  const client = SibApiV3Sdk.ApiClient.instance;
+  client.authentications["api-key"].apiKey = BREVO_API_KEY;
 
-  console.log(`[EMAIL] Sending OTP to ${recipientEmail} via smtp-relay.brevo.com:587`);
+  const api = new SibApiV3Sdk.TransactionalEmailsApi();
 
   const html = `
 <!DOCTYPE html>
@@ -57,16 +50,18 @@ export async function sendOtpEmail(recipientEmail: string, otp: string, expiresI
 </html>`;
 
   try {
-    await transporter.sendMail({
-      from: `VitalSub <${BREVO_FROM}>`,
-      to: recipientEmail,
+    await api.sendTransacEmail({
+      sender: { email: BREVO_FROM, name: "VitalSub" },
+      to: [{ email: recipientEmail }],
       subject: "Your VitalSub verification code",
-      text: `Your VitalSub verification code is: ${otp}. It expires in ${expiresInMinutes} minutes.`,
-      html,
+      htmlContent: html,
+      textContent: `Your VitalSub verification code is: ${otp}. It expires in ${expiresInMinutes} minutes.`,
     });
-    console.log(`[EMAIL] OTP sent successfully to ${recipientEmail}`);
+    console.log(`[EMAIL] OTP sent successfully to ${recipientEmail} via Brevo API`);
   } catch (err: any) {
-    console.error(`[EMAIL] Failed to send OTP to ${recipientEmail}: code=${err.code} message=${err.message}`);
+    const status = err.status || err.code || "unknown";
+    const message = err.message || err.statusText || String(err);
+    console.error(`[EMAIL] Failed to send OTP to ${recipientEmail}: status=${status} message=${message}`);
     console.log(`[EMAIL] OTP for ${recipientEmail}: ${otp} (email send failed, logged as fallback)`);
   }
 }
