@@ -1,22 +1,25 @@
 import { config } from "dotenv";
 import path from "path";
-config({ path: path.resolve(process.cwd(), "../../.env") });
+import { fileURLToPath } from "url";
+
+let configDir: string;
+try {
+  configDir = path.dirname(fileURLToPath(import.meta.url));
+} catch {
+  configDir = process.cwd();
+}
+config({ path: path.resolve(configDir, "../../.env") });
 import { defineConfig } from "drizzle-kit";
 
-const databaseUrl = process.env.DATABASE_URL;
-
-if (!databaseUrl) {
-  console.warn(
-    "WARNING: DATABASE_URL is not set. Drizzle migrations/push will not work. " +
-    "Set DATABASE_URL in your .env file."
-  );
-}
+const schemaDir = path.resolve(configDir, "src/schema");
 
 export default defineConfig({
-  // Change from a specific file to a "glob" pattern
-  schema: "C:/Users/monee/OneDrive/Desktop/Attached-Assets/lib/db/src/schema/*.ts",
+  schema: [
+    path.resolve(schemaDir, "users.ts"),
+    path.resolve(schemaDir, "ingredients.ts"),
+  ],
   dialect: "postgresql",
   dbCredentials: {
-    url: databaseUrl || "postgresql://localhost:5432/recipe_sub",
+    url: process.env.DATABASE_URL || "postgresql://localhost:5432/recipe_sub",
   },
 });
